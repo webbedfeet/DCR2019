@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Creating and maintaining teaching materials using R(Markdown)</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Abhijit Dasgupta" />
+    <meta name="date" content="2019-11-08" />
+    <link href="index_files/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="robot.css" type="text/css" />
+    <link rel="stylesheet" href="robot-fonts.css" type="text/css" />
+    <link rel="stylesheet" href="sfah.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Creating and maintaining teaching materials using R(Markdown)
+### Abhijit Dasgupta
+### Zansors
+### November 8, 2019
+
+---
+
+
+layout:true
+
+&lt;div class="my-header"&gt;
+&lt;span class='header'&gt;DC R conference, 2019&lt;/span&gt;
+&lt;span class='header2'&gt;Abhijit Dasgupta&lt;/span&gt;
+&lt;/div&gt;
+
+---
+
+
+
+
+## Who am I?
+
++ Co-founded Stat Programming DC with Marck
++ Sat on the Board of DCDC
+
+--
++ Biostatistican by trade (NIH)
+    - Research, collaboration and reviews
++ Data science at a startup (Zansors)
+    - stats, signal processing, business dev
+--
++ Teaching R (FAES Graduate School at NIH, State Dept, elsewhere)
+
+---
+
+## Who am I?
+
++ Co-founded Stat Programming DC with Marck
++ Sat on the Board of DCDC
++ Biostatistican by trade (NIH)
+    - Research, collaboration and reviews
++ Data science at a startup (Zansors)
+    - stats, signal processing, business dev
++ .heatinline[Teaching R (FAES Graduate School at NIH, State Dept, elsewhere)]
+
+---
+
+## Teaching at FAES
+
+
+![](img/BIOF339.png)
+
+---
+
+# Teaching at FAES
+
+![](img/BIOF439.png)
+
+---
+
+## Teaching workshops
+
+![](img/PS312.png)
+
+---
+
+&lt;img src="img/graphics/graphics.001.jpeg" width="900" height="600" /&gt;
+
+---
+
+&lt;img src="img/graphics/graphics.002.jpeg" width="900" height="600" /&gt;
+
+---
+
+&lt;img src="img/graphics/graphics.003.jpeg" width="900" height="600" /&gt;
+
+---
+
+&lt;img src="img/graphics/graphics.004.jpeg" width="900" height="600" /&gt;
+
+---
+
+&lt;img src="img/graphics/graphics.005.jpeg" width="900" height="600" /&gt;
+
+---
+
+## Concept
+
+### Create a RMarkdown website
+
+--
+
+### Slides with `xaringan`
+
+--
+
+### Homework with RMarkdown
+
+--
+
+### Notes with `bookdown`
+
+---
+
+## But....
+
+### Need to produce new material and update
+
+--
+
+### Update website and not rebuild everytime (make??)
+
+--
+
+### Some kind of table of contents for lectures, homeworks
+
+--
+
+### Automate processes (syllabus, receiving homework, grading, recording grades)
+
+---
+
+## Syllabus
+
+
+```r
+startDate &lt;- lubridate::ymd('20190911')
+*classDate &lt;- function(wk, startDate ){
+* today &lt;- startDate + 7*(wk-1)
+* return(format(today, "%B %d, %Y"))
+}
+
+dts &lt;- classDate(1:14, startDate)
+topics &lt;- c(
+  'Introduction to R, RStudio and RMarkdown',
+  'Data Structures in R (classes 5:30-7, 7-8:30)',
+  'R packages, data import/export, munging',
+  'Towards analytic data: Data Munging, continued',
+  'Data exploration through visualization',
+  'More data visualization and RMarkdown',
+  'Statistical analyses: Table 1, estimation and confidence intervals, and more ggplot',
+  'Statistical analyses: Classical hypothesis testing and computational inference',
+  'Statistical learning: Regression models',
+  "More data munging with `purrr`: grouping, mapping and functional programming",
+  "Basic bioinformatics: Bioconductor and friends",
+  "No class (Thanksgiving)",
+  'Statistical learning: Cluster analysis and pattern recognition',
+  "Project presentations")
+*D &lt;- tibble(Date = dts, Topic=topics)
+knitr::kable(D)
+```
+
+Automatically populate dates
+
+---
+
+## Syllabus
+
+![](img/syllabus.png)
+
+---
+
+## Lectures 
+
+#### Table of contents
+
+
+```r
+parse_title &lt;- function(f){
+  if(is.na(f)) return(NA)
+  rmarkdown::yaml_front_matter(f)$title
+}
+
+rmds &lt;- dir_ls('lectures', regex = '\\d{2}.*.Rmd')
+htmls &lt;- str_replace(rmds, 'Rmd','html')
+pdfs &lt;- str_replace(rmds, 'Rmd','pdf')
+
+blah &lt;- Reduce(full_join, list(htmls, pdfs,rmds)) %&gt;% 
+  select(base, everything())
+blah &lt;- blah %&gt;% tidyr::gather(variable, value, -base) %&gt;% 
+  mutate(value = glue('[{variable}]({value})')) %&gt;% 
+  mutate(value = ifelse(str_detect(value, 'NA'), '', value)) %&gt;%
+  spread(variable, value) %&gt;% 
+  rename(Lecture=base) %&gt;% 
+  mutate(Title = map_chr(str_match(Rmd, '\\((.+)\\)')[,2],parse_title))
+
+kable(blah) %&gt;%
+  kable_styling(bootstrap_options='striped', full_width = T)
+```
+
+---
+
+## Lectures 
+
+#### Table of contents
+
+
+```r
+*parse_title &lt;- function(f){
+* if(is.na(f)) return(NA)
+* rmarkdown::yaml_front_matter(f)$title
+*} 
+
+rmds &lt;- dir_ls('lectures', regex = '\\d{2}.*.Rmd')
+htmls &lt;- str_replace(rmds, 'Rmd','html')
+pdfs &lt;- str_replace(rmds, 'Rmd','pdf')
+
+blah &lt;- Reduce(full_join, list(htmls, pdfs,rmds)) %&gt;% 
+  select(base, everything())
+blah &lt;- blah %&gt;% tidyr::gather(variable, value, -base) %&gt;% 
+  mutate(value = glue('[{variable}]({value})')) %&gt;% 
+  mutate(value = ifelse(str_detect(value, 'NA'), '', value)) %&gt;%
+  spread(variable, value) %&gt;% 
+  rename(Lecture=base) %&gt;% 
+  mutate(Title = map_chr(str_match(Rmd, '\\((.+)\\)')[,2],parse_title))
+
+kable(blah) %&gt;%
+  kable_styling(bootstrap_options='striped', full_width = T)
+```
+
+Automatically grab slide titles from the slides
+
+---
+
+## Lectures 
+
+#### Table of contents
+
+
+```r
+parse_title &lt;- function(f){
+  if(is.na(f)) return(NA)
+  rmarkdown::yaml_front_matter(f)$title
+}
+
+rmds &lt;- dir_ls('lectures', regex = '\\d{2}.*.Rmd')
+htmls &lt;- str_replace(rmds, 'Rmd','html')
+pdfs &lt;- str_replace(rmds, 'Rmd','pdf')
+
+blah &lt;- Reduce(full_join, list(htmls, pdfs,rmds)) %&gt;% 
+  select(base, everything())
+blah &lt;- blah %&gt;% tidyr::gather(variable, value, -base) %&gt;% 
+* mutate(value = glue('[{variable}]({value})')) %&gt;%
+  mutate(value = ifelse(str_detect(value, 'NA'), '', value)) %&gt;%
+  spread(variable, value) %&gt;% 
+  rename(Lecture=base) %&gt;% 
+  mutate(Title = map_chr(str_match(Rmd, '\\((.+)\\)')[,2],parse_title))
+
+kable(blah) %&gt;%
+  kable_styling(bootstrap_options='striped', full_width = T)
+```
+
+I use `glue` a lot for automating link creation
+
+---
+
+## Lectures
+
+![](img/lecture_toc.png)
+
+---
+
+## Homeworks
+
+
+```r
+solutions &lt;- dir_ls('HW', glob = '*Solution.html', fail=F)
+hws &lt;- dir_ls('HW', regex="HW\\d+.html", fail=F)
+hws &lt;- setdiff(hws, solutions)
+rmds &lt;- dir_ls('HW', regexp = 'HW\\d+.Rmd')
+numbers &lt;- sort(unique(stringr::str_match(hws, 'HW(\\d+)')[,2]))
+ind &lt;- match(glue('HW/HW{i}_Solution.html', i=numbers), solutions)
+out_data &lt;- tibble(n = numbers, rmds = sort(rmds), hws = sort(hws), solutions = solutions[ind])
+
+*out &lt;- tibble('Homework' = glue_data(out_data,'[Homework {n}]({hws})'),
+*             'R Markdown' = glue_data(out_data,
+*                                      '[R Markdown]({rmds})'),
+*             'Solutions' = ifelse(!is.na(out_data$solutions),
+*                                  glue_data(out_data,'[Solution]({solutions})'),
+*                                  ''))
+```
+
+Automatically create homework and solution links
+
+Provide RMD files as template for submission
+---
+
+## Homework
+
+![](img/hw_toc.png)
+
+---
+
+## Homework
+
+![](img/db_link.png)
+--
+
+.pull-left[
+
+```r
+library(reticulate)
+source_python('create_request.py')
+a &lt;- py$create_request('2019-11-07T00:00:00',
+                       'Homework 8',
+                       '/BIOF339_Fall2019/Homeworks/HW8')
+```
+]
+.pull-right[
+
+```python
+def create_request(timestamp, name, directory, late=True, token=tk):
+  """
+  Create a file request in Dropbox, with a deadline 
+  (only for Business or Professional accounts)
+  
+  INPUTS:
+  
+  timestamp: The deadline date and time in ISO 8601 format (YYYY-MM-DDThh:mm:ss)
+             in local time
+  name:      The title of the file request
+  directory: The destination directory for the file request. 
+             It must start with '/' for the top level Dropbox directory
+  late :     True/False; if True a grace period of 1 day is added.
+  token:     Dropbox authentication token
+  """
+```
+]
+
+???
+
+`reticulate` is really fantastic
+
+Dropbox Python API (due to GVR?)
+---
+
+## Homework evaluation
+
+
++ Homework submission as RMarkdown documents via Dropbox
+    - Dropbox attaches student names to files
++ I run the document, provide comments in RMarkdown, and put grade on last line
+    - Emphasize standard project structure, `here`
++ Script to parse grades from submissions, with names, and update a CSV file
+    - Can see who has submitted which homework, and scores
++ Email commented homework back 
+    - `gmailr` &amp; class email list
+--
++ .heatinline[Have not played with `learnr` and `grader`]
+
+???
+Jenny Bryan's work on naming conventions, parsable filenames
+
+Dan Chen's summer internship on `grader`
+---
+
+## Maintenance and upkeep
+
+Use `drake` (one choice out of many)
+
+.pull-left[
+
+```r
+slides_plan &lt;- drake_plan(
+  create_slides_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir=slides_outdir),
+    transform = map(rmdf=!!slides_rmdfiles)
+  ),
+  create_slides_pdf = target(
+    coursedown::slide2pdf(knitr_in(rmdf)),
+    transform = map(rmdf = !!slides_rmdfiles)
+  ),
+  create_index = target(
+    rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+    trigger = trigger(depend =T, file=T, command=T, 
+                      change = max(map_dbl(!!slides_rmdfiles, 
+                                       function(x) file.info(x)$mtime)))
+  )
+)
+```
+]
+.pull-right[
+
+```r
+hw_plan &lt;- drake_plan(
+  create_hw_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir = hw_outdir),
+    transform = map(rmdf = !!hw_rmdfiles)
+  ),
+  create_index = target(
+    rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+    trigger = trigger(depend=T, file=T, command=T,
+                      change = max(map_dbl(!!hw_rmdfiles, 
+                                           function(x) file.info(x)$mtime)))
+  )
+)
+```
+
+]
+
+---
+
+## Maintenance and upkeep
+
+Use `drake` (one choice out of many)
+
+.pull-left[
+
+```r
+slides_plan &lt;- drake_plan(
+  create_slides_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir=slides_outdir),
+    transform = map(rmdf=!!slides_rmdfiles)
+  ),
+  create_slides_pdf = target(
+*   coursedown::slide2pdf(knitr_in(rmdf)),
+    transform = map(rmdf = !!slides_rmdfiles)
+  ),
+  create_index = target(
+    rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+    trigger = trigger(depend =T, file=T, command=T, 
+                      change = max(map_dbl(!!slides_rmdfiles, 
+                                       function(x) file.info(x)$mtime)))
+  )
+)
+```
+
+Uses `pagedown::chrome_print`.
+
+My students seem to demand PDFs
+]
+.pull-right[
+
+```r
+hw_plan &lt;- drake_plan(
+  create_hw_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir = hw_outdir),
+    transform = map(rmdf = !!hw_rmdfiles)
+  ),
+  create_index = target(
+    rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+    trigger = trigger(depend=T, file=T, command=T,
+                      change = max(map_dbl(!!hw_rmdfiles, 
+                                           function(x) file.info(x)$mtime)))
+  )
+)
+```
+
+]
+
+---
+
+## Maintenance and upkeep
+
+Use `drake` (one choice out of many)
+
+.pull-left[
+
+```r
+slides_plan &lt;- drake_plan(
+  create_slides_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir=slides_outdir),
+    transform = map(rmdf=!!slides_rmdfiles)
+  ),
+  create_slides_pdf = target(
+    coursedown::slide2pdf(knitr_in(rmdf)),
+    transform = map(rmdf = !!slides_rmdfiles)
+  ),
+* create_index = target(
+*   rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+*   trigger = trigger(depend =T, file=T, command=T,
+*                     change = max(map_dbl(!!slides_rmdfiles,
+*                                      function(x) file.info(x)$mtime)))
+  )
+)
+```
+
+Automatically updates the TOC
+]
+.pull-right[
+
+```r
+hw_plan &lt;- drake_plan(
+  create_hw_html = target(
+    rmarkdown::render(knitr_in(rmdf), output_dir = hw_outdir),
+    transform = map(rmdf = !!hw_rmdfiles)
+  ),
+  create_index = target(
+    rmarkdown::render_site(knitr_in('slides/index.Rmd')),
+    trigger = trigger(depend=T, file=T, command=T,
+                      change = max(map_dbl(!!hw_rmdfiles, 
+                                           function(x) file.info(x)$mtime)))
+  )
+)
+```
+
+]
+
+---
+
+## The `coursedown` package (at github.com/webbedfeet/coursedown)
+
+.pull-left[
++ Structure project as a website with 3 sub-websites
+    - Lectures,  Homework,  Notes
++ Common top level links
++ Assumes deployment via GitHub Pages 
++ Creates directory structure
++ Provides templates for slides, homeworks, notes, top-level `index.Rmd` for each website
+
+
+]
+.pull-right[
+`_course.yml`
+```yaml
+course_shortname: BIOF339
+course_name: Practical R
+instructor: Abhijit Dasgupta
+description: ''
+course_url: http://www.araastat.com/BIOF339
+dates: Fall, 2019
+slack: 'biof339'
+short_repo: araastat/BIOF339
+twitter: webbedfeet
+course_shortname1: BIOF339
+github: https://www.github.com/araastat/BIOF339
+slack_channel: https://biof339.slack.com
+```
+
++ Common branding and labeling via yaml
+]
+
+--
+#### Very much a work in progress
+
+---
+
+## Wrapping up
+
++ Many opinionated choices, based on what I wanted to learn
++ .saltinline[Would love collaboration to fix the kinks]
+
+--
+
+------
+.center[.heat[Thank you]]
+
+
+
+&lt;svg style="height:0.8em;top:.04em;position:relative;" viewBox="0 0 576 512"&gt;&lt;path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"/&gt;&lt;/svg&gt; [webbedfeet.netlify.com](https://webbedfeet.netlify.com)
+&lt;svg style="height:0.8em;top:.04em;position:relative;" viewBox="0 0 512 512"&gt;&lt;path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/&gt;&lt;/svg&gt; @webbedfeet  
+&lt;svg style="height:0.8em;top:.04em;position:relative;" viewBox="0 0 496 512"&gt;&lt;path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/&gt;&lt;/svg&gt; [webbedfeet/coursedown](https://www.github.com/webbedfeet/coursedown)
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"ratio": "16:9",
+"highlightLanguage": "r",
+"countIncrementalSlides": false,
+"highlightStyle": "tomorrow-night-bright",
+"highlightLines": true,
+"slideNumberFormat": "%current%"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
